@@ -1,0 +1,90 @@
+<?php
+// Получить профиль пользователя
+$profile = $modx->user->getOne('Profile');
+// Получить значение поля photo
+$pathToPhoto = $profile->get('photo');
+// Установить полю photo текущее значение
+$hook->setValue('photo',$pathToPhoto);
+ 
+// Запрос на удаление картинки (глобальный массив POST имеет ключ delete-photo-btn со значением отличным от NULL)
+if (isset($_POST['delete-photo-btn'])) {
+  // Если поле photo не пустое, то..
+  if ($pathToPhoto) {
+    // Сформировать полный путь к файлу (фото)
+    $fullPathToPhoto = $modx->config['base_path'].$pathToPhoto;
+    // Если файл (фото) есть, то удалить его
+    if(file_exists($fullPathToPhoto))
+      unlink($fullPathToPhoto);
+    // Установить полю photo пустое значение
+    $hook->setValue('photo','');
+  }
+}
+ 
+// Запрос на обновление (глобальный массив POST имеет ключ login-updprof-btn со значением отличным от NULL)
+if (isset($_POST['login-updprof-btn'])) {
+  // Допустимые расширения (jpg, png, jpeg)
+  $validExt = array('jpg', 'png', 'jpeg');
+  // Директория для хранения фото пользователей
+  $pathToPhoto = $modx->config['base_path'] . 'assets/photouser/';
+  // Имя файла пользователя 
+  $nameFile = $_FILES['photo']['name'];
+  // Получить расширение загруженного пользователем файла в нижнем регистре
+  $extFile = mb_strtolower(pathinfo($nameFile, PATHINFO_EXTENSION));
+  // Временное имя, с которым принятый файл был сохранён на сервере
+  $tmpFile = $_FILES['photo']['tmp_name'];
+  // Если файл загружен посредством HTTP POST и ошибок в процессе загрузке не возникло, то...
+  if ((is_uploaded_file($tmpFile)) && !($_FILES['photo']['error'])) {
+    // Проверям соответствует ли расширение файла допустимому. Если всё хорошо, то...
+    if(in_array($extFile, $validExt)) {
+      // Формируем имя файлу (фото)
+      $nameFilePhoto = 'user'.$modx->user->get('id') . '.' . $extFile;
+      // Получаем полное имя файла (фото)
+      $fullNameFilePhoto = $pathToPhoto . $nameFilePhoto;
+      // Перемещаем временный файл на новое место $fullNameFilePhoto. Если всё прошло успешно, то...
+      if (move_uploaded_file($tmpFile, $fullNameFilePhoto)) {
+        // если файл phpthumb.class.php не был подключён, то включить его
+        require_once MODX_CORE_PATH.'model/phpthumb/phpthumb.class.php';
+        // Создать новый экземпляр класса phpThumb
+        $phpThumb = new phpThumb();
+        // Указываем исходное изображение
+        $phpThumb->setSourceFilename($fullNameFilePhoto);
+        // Устанавливаем ширину изображению
+        $phpThumb->setParameter('w', 100);
+        // Устанавливаем высоту изображению
+        $phpThumb->setParameter('h', 100);
+        // Задаём тип обрезки
+        $phpThumb->setParameter('zc', '1');
+        // Задём качество изображения
+        $phpThumb->setParameter('q', '80');
+        // Генерируем уменьшенное изображение. Если действие прошло успешно, то...
+        if ($phpThumb->GenerateThumbnail()) {
+          // Сохраняем изображение в файл $fullNameFilePhoto. Если данное действие завершилось успехом, то..
+          if ($phpThumb->RenderToFile($fullNameFilePhoto)) {
+            // Устанавливаем в поле photo путь к файлу 
+            $hook->setValue('photo',$modx->getOption('assets_url'). 'photouser/' . $nameFilePhoto);
+          }
+          else {
+            $modx->log(modX::LOG_LEVEL_ERROR, 'Ошибка при сохрании изображения в файл '.$fullNameFilePhoto);
+          }
+        }
+        else {
+          // Записываем полученую ошибку в журнал MODX
+          $modx->log(modX::LOG_LEVEL_ERROR, print_r($phpThumb->debugmessages, 1));
+        }
+      }
+      else {
+        // Записываем в журнал что произошла ошибка при перемещении файла на новое место
+        $modx->log(modX::LOG_LEVEL_ERROR, 'Ошибка при перемещении временного файла '.$tmpFile.' на новое место '.$fullNameFilePhoto);
+      }
+    } 
+    else {
+      // Записываем в журнал сообщение о том, что расширение файла не соответствует разрешённому
+      $modx->log(modX::LOG_LEVEL_ERROR, 'Изображение имеет недопустимое расширение');
+    }
+  }
+  else {
+    // Записываем в журнал что произошла ошибка при загрузке файла
+    $modx->log(modX::LOG_LEVEL_ERROR, 'Ошибка при загрузке файла. Код ошибки: '.$_FILES['photo']['error']);
+  }
+}
+return true;
