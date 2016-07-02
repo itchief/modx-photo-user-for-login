@@ -1,0 +1,156 @@
+[[!UpdateProfile? &validate=`fullname:required` &preHooks=`loadUserPhoto`]]
+ 
+<script>
+// После загрузки страницы
+$(function(){
+  // Произошло изменение значения элемента с id = "photo"
+  $('#photo').change(function(e){
+    // Если браузер не поддерживает FileReader, то ничего не делаем
+    if (!window.FileReader) {
+      console.log('Браузер не поддерживает File API');
+      return;
+    }
+    // Получаем выбранный файл (изображение)
+    var file = e.target.files[0];
+    // Выводим сообщение, что браузер не поддерживает указанный тип файла    
+    if (!((file.type=='image/png') || (file.type=='image/jpeg'))) {
+      $('#img-error').text('Загруженый файл не является изображением');
+      return;
+    }
+    // Выводим сообщение, что файл имеет большой размер 
+    if (file.size>=524288) {
+      $('#img-error').text('Размер файла больше чем 512Кбайт');
+      return;      
+    }
+    $('#img-error').text('');
+    // Создаём экземпляр объекта FileReader, посредством которого будем читать файл
+    var reader = new FileReader();
+    // После успешного завершения операции чтения файла
+    $(reader).on('load', function(event){
+    // Указываем в качестве значения атрибута src изображения содержимое файла (картинки) 
+    $('#img-photo').attr('src',event.target.result);
+    // Изменяем ширину и высоту изображения
+      if ($('#img-photo').width()>=$('#img-photo').height()) {
+        $('#img-photo').css('height','100px');
+        $('#img-photo').css('margin-left',-($('#img-photo').width()-100)/2);
+      } 
+      else {
+        $('#img-photo').css('widht','100px');   
+        $('#img-photo').css('margin-top',-($('#img-photo').height()-100)/2); 
+      }
+    });
+    // Запускает процесс чтения файла (изображения). После завершения чтения файла его содержимое будет доступно посредством атрибута result
+    reader.readAsDataURL(file);
+  });
+  // Перед отправкой формы на сервер...
+  $("#updateProfile").submit(function(e) {
+    // Проверяем значения поля photo. Если оно равно пустой строке, то данные отправляем
+    if ($('#photo').val()=='') {
+      return;
+    }
+    // Если элемент содержит некоторую строку (ошибки связанные с фото), то отменяем отправку формы
+    if ( (($('#img-error').text()).length>0)) {
+      e.preventDefault();
+    }
+  });  
+});
+</script>
+ 
+ 
+<div class="container">
+  <div class="row">
+    <div class="col-md-8 col-lg-6">
+      <div class="panel panel-primary">
+        <div class="panel-heading"><i class="glyphicon glyphicon-edit"></i> Редактирование данных</div>
+        <div class="panel-body">
+          <div class="updprof-error">[[+error.message]]</div>
+          [[+login.update_success:is=`1`:then=`[[%login.profile_updated? &namespace=`login` &topic=`updateprofile`]]`]]
+          <form id="updateProfile" action="[[~[[*id]]]]" method="post" class="form-horizontal" enctype="multipart/form-data">
+            <input type="hidden" name="nospam" value="">
+            <!-- Блок, содержащий фото и имя пользователя -->
+            <div id="crop" class="img-rounded center-block" style="height: 100px; width: 100px; overflow: hidden;">
+              <img  id="img-photo" src="[[+photo:default=`/assets/photouser/default.jpg`]]">
+            </div>
+            <p class="lead text-center">[[+fullname]]</p>
+            <hr>
+            <div class="form-group">
+              <label for="fullname" class="col-sm-4 control-label">[[!%login.fullname? &namespace=`login` &topic=`updateprofile`]]</label>
+              <div class="col-sm-8">
+                <input type="text" name="fullname" class="form-control" id="fullname" value="[[+fullname]]">
+                <span class="help-block text-error">
+                  [[+error.fullname]]
+                </span>        
+              </div>      
+            </div>
+            <!-- Input для загрузки фото пользователя -->
+            <div class="form-group">
+              <label for="photo" class="col-sm-4 control-label" style="padding-top: 0px; padding-bottom: 6px;">Фото</label>
+              <div class="col-sm-8" style="padding-top: 0px; padding-bottom: 6px;">
+                <input type="file" id="photo" name="photo" value="[[+photo]]">
+                <span id="img-error" class="help-block text-error"></span>  
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="phone" class="col-sm-4 control-label">[[!%login.phone]]</label>
+              <div class="col-sm-8">
+                <input type="text" name="phone" class="form-control" id="phone" value="[[+phone]]">
+                <span class="help-block text-error">
+                  [[+error.phone]]
+                </span>        
+              </div>      
+            </div> 
+            <div class="form-group">
+              <label for="mobilephone" class="col-sm-4 control-label">[[!%login.mobilephone]]</label>
+              <div class="col-sm-8">
+                <input type="text" name="mobilephone" class="form-control" id="mobilephone" value="[[+mobilephone]]">
+                <span class="help-block text-error">
+                  [[+error.mobilephone]]
+                </span>        
+              </div>      
+            </div> 
+            <div class="form-group">
+              <label for="address" class="col-sm-4 control-label">[[!%login.address]]</label>
+              <div class="col-sm-8">
+                <input type="text" name="address" class="form-control" id="address" value="[[+address]]">
+                <span class="help-block text-error">
+                  [[+error.address]]
+                </span>        
+              </div>      
+            </div>  
+            <div class="form-group">
+              <label for="country" class="col-sm-4 control-label">[[!%login.country]]</label>
+              <div class="col-sm-8">
+                <input type="text" name="country" class="form-control" id="country" value="[[+country]]">
+                <span class="help-block text-error">
+                  [[+error.country]]
+                </span>        
+              </div>      
+            </div>   
+            <div class="form-group">
+              <label for="city" class="col-sm-4 control-label">[[!%login.city]]</label>
+              <div class="col-sm-8">
+                <input type="text" name="city" class="form-control" id="city" value="[[+city]]">
+                <span class="help-block text-error">
+                  [[+error.city]]
+                </span>        
+              </div>      
+            </div>  
+            <div class="form-group">
+              <label for="website" class="col-sm-4 control-label">[[!%login.website]]</label>
+              <div class="col-sm-8">
+                <input type="text" name="website" class="form-control" id="website" value="[[+website]]">
+                <span class="help-block text-error">
+                  [[+error.website]]
+                </span>        
+              </div>      
+            </div>  
+            <!-- Кнопка "Удалить фото" -->
+            <input type="submit" value="Удалить фото" name="delete-photo-btn" id="login-updprof-btn" class="btn btn-primary pull-left">
+            <!-- Кнопка "Обновить данные" -->
+            <input type="submit" value="Обновить данные" name="login-updprof-btn" id="login-updprof-btn" class="btn btn-primary pull-right">
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
